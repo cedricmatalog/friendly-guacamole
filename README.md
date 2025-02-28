@@ -962,7 +962,7 @@ function createUser(name, age) {
 const user = createUser('Alice', 30);
 ```
 
-**Class example**:
+**Class example** (continued):
 ```javascript
 class User {
   #modified; // Private field (ES2022)
@@ -982,4 +982,1014 @@ class User {
   }
 }
 
-const user = new User('Alice', 30
+const user = new User('Alice', 30);
+```
+
+**Key differences**:
+
+1. **Syntax**: Classes use `class`, `constructor`, and `new`. Factories are just functions.
+
+2. **`this` binding**: 
+   - Classes: `this` refers to the instance
+   - Factories: No `this` issues, uses closure
+
+3. **Privacy**:
+   - Classes: Use private fields (`#property`)
+   - Factories: Natural privacy through closures
+
+4. **Inheritance**:
+   - Classes: `extends` keyword for inheritance
+   - Factories: Composition through object merging/spreading 
+
+5. **Identity**: 
+   - Classes: `instanceof` works
+   - Factories: No built-in type checking
+
+**When to use each**:
+
+I'd use **Classes** when:
+- Working with existing class hierarchies
+- Need prototype methods (memory efficiency for many instances)
+- Using frameworks that expect classes (React, Angular, etc.)
+- Need `instanceof` for type checking
+- Inheritance is a clear fit for the domain
+
+I'd use **Factory Functions** when:
+- Needing simpler object creation without `new`
+- Creating closures over private data is essential
+- Avoiding `this` binding issues (especially in event handlers)
+- Composing objects with mixins rather than inheritance
+- Working with functional programming patterns
+
+**Interviewer:** Can you demonstrate how composition could be implemented using factory functions to avoid deep inheritance hierarchies?
+
+**You:** Absolutely. Composition with factory functions provides a flexible alternative to class inheritance. Here's a demonstration:
+
+```javascript
+// Independent behaviors as separate factories
+function withLogging() {
+  return {
+    log(message) {
+      console.log(`[${new Date().toISOString()}] ${message}`);
+    }
+  };
+}
+
+function withDatabase(dbURL) {
+  const connection = { url: dbURL, status: 'connected' };
+  
+  return {
+    saveData(data) {
+      this.log?.(`Saving data to ${connection.url}`);
+      return `Data saved: ${JSON.stringify(data)}`;
+    },
+    
+    getData(id) {
+      this.log?.(`Fetching data with id ${id}`);
+      return { id, sample: 'data' };
+    }
+  };
+}
+
+function withUserManagement() {
+  const users = new Map();
+  
+  return {
+    addUser(user) {
+      this.log?.(`Adding user ${user.name}`);
+      users.set(user.id, user);
+      this.saveData?.(user); // Optional chaining for composition
+      return user.id;
+    },
+    
+    getUser(id) {
+      this.log?.(`Getting user ${id}`);
+      return users.get(id) || this.getData?.(id);
+    }
+  };
+}
+
+// Composing behaviors to create a service
+function createUserService(dbURL) {
+  return {
+    ...withLogging(),
+    ...withDatabase(dbURL),
+    ...withUserManagement()
+  };
+}
+
+// Usage
+const userService = createUserService('mongodb://localhost:27017');
+userService.addUser({ id: 1, name: 'Alice' });
+const user = userService.getUser(1);
+```
+
+This approach has several advantages:
+
+1. **Selective composition**: Only include the behaviors you need
+```javascript
+// Logger + User Management, no database
+const simpleService = {
+  ...withLogging(),
+  ...withUserManagement()
+};
+```
+
+2. **Shallow hierarchies**: No deep inheritance chains
+
+3. **Explicit dependencies**: Each factory clearly shows what it needs
+
+4. **Testability**: Easy to test each behavior in isolation
+
+5. **Runtime composition**: Can compose objects based on configuration:
+```javascript
+function createService(config) {
+  let service = {};
+  
+  if (config.logging) service = {...service, ...withLogging()};
+  if (config.database) service = {...service, ...withDatabase(config.dbUrl)};
+  if (config.users) service = {...service, ...withUserManagement()};
+  
+  return service;
+}
+```
+
+This approach aligns with the principle "favor composition over inheritance" and tends to create more maintainable code, especially as systems grow in complexity.
+
+## Topic: this, call, apply, and bind
+
+**Interviewer:** Explain how `this` works in JavaScript and how `call`, `apply`, and `bind` can be used to manipulate it.
+
+**You:** In JavaScript, `this` is a special keyword that refers to the context within which a function is executed. Its value is determined by how a function is called, not where it's defined.
+
+There are five main patterns for how `this` is set:
+
+1. **Global context**: When not in any function, `this` refers to the global object (window in browsers, global in Node.js)
+```javascript
+console.log(this); // window or global
+```
+
+2. **Function context**: In a regular function, `this` depends on how the function is called
+```javascript
+function showThis() {
+  console.log(this);
+}
+
+showThis(); // window/global (or undefined in strict mode)
+```
+
+3. **Method context**: When a function is called as a method of an object, `this` refers to that object
+```javascript
+const user = {
+  name: 'Alice',
+  greet() {
+    console.log(`Hello, I'm ${this.name}`);
+  }
+};
+
+user.greet(); // "Hello, I'm Alice" - 'this' is the user object
+```
+
+4. **Constructor context**: When used with `new`, `this` refers to the newly created object
+```javascript
+function User(name) {
+  this.name = name;
+}
+
+const alice = new User('Alice'); // 'this' is the new object
+```
+
+5. **Arrow functions**: Arrow functions don't have their own `this`; they inherit it from the surrounding lexical context
+```javascript
+const user = {
+  name: 'Alice',
+  friends: ['Bob', 'Charlie'],
+  showFriends() {
+    this.friends.forEach(friend => {
+      console.log(`${this.name} knows ${friend}`);
+    });
+  }
+};
+
+user.showFriends(); // 'this' refers to user in the arrow function
+```
+
+**The `call`, `apply`, and `bind` methods** allow explicit control of what `this` refers to:
+
+**`call`** invokes a function with a specified `this` value and arguments provided individually:
+```javascript
+function greet(greeting) {
+  console.log(`${greeting}, I'm ${this.name}`);
+}
+
+const user = { name: 'Alice' };
+greet.call(user, 'Hello'); // "Hello, I'm Alice"
+```
+
+**`apply`** is similar to `call` but takes arguments as an array:
+```javascript
+greet.apply(user, ['Hi']); // "Hi, I'm Alice"
+```
+
+**`bind`** creates a new function with `this` permanently bound to a value:
+```javascript
+const userGreet = greet.bind(user);
+userGreet('Howdy'); // "Howdy, I'm Alice"
+
+// Even if called as a method of another object, 'this' remains bound
+const anotherUser = { 
+  name: 'Bob',
+  greet: userGreet 
+};
+anotherUser.greet('Hey'); // Still "Hey, I'm Alice" not "Hey, I'm Bob"
+```
+
+**Interviewer:** Can you provide a real-world scenario where understanding `this` is crucial, and demonstrate how you'd solve common pitfalls?
+
+**You:** Absolutely. Let's consider a practical UI component scenario that demonstrates common `this` pitfalls and solutions:
+
+```javascript
+function UserDashboard(container, userData) {
+  this.container = container;
+  this.user = userData;
+  this.initialized = false;
+  
+  // Render dashboard
+  this.render = function() {
+    this.container.innerHTML = `
+      <div class="dashboard">
+        <h2>Welcome, ${this.user.name}</h2>
+        <button id="refresh">Refresh Data</button>
+        <div id="user-data">${JSON.stringify(this.user.data)}</div>
+      </div>
+    `;
+    
+    // PITFALL 1: 'this' loss in event listener
+    document.getElementById('refresh').addEventListener('click', function() {
+      // 'this' here refers to the button, not the UserDashboard instance
+      this.refreshData(); // Error: this.refreshData is not a function
+    });
+  };
+  
+  this.refreshData = function() {
+    console.log(`Refreshing data for ${this.user.name}`);
+    // API call to refresh data...
+    document.getElementById('user-data').textContent = 'Updated data';
+  };
+  
+  this.initialize = function() {
+    if (this.initialized) return;
+    
+    // PITFALL 2: 'this' loss in callback
+    setTimeout(function() {
+      this.render(); // Error: this.render is not a function
+    }, 100);
+    
+    this.initialized = true;
+  };
+}
+```
+
+Here are the solutions to these pitfalls:
+
+**Solution 1: Using bind**
+```javascript
+document.getElementById('refresh').addEventListener('click', function() {
+  this.refreshData();
+}.bind(this)); // Explicitly bind 'this' to the UserDashboard instance
+```
+
+**Solution 2: Using arrow functions**
+```javascript
+document.getElementById('refresh').addEventListener('click', () => {
+  this.refreshData(); // Arrow function inherits 'this' from lexical scope
+});
+```
+
+**Solution 3: Saving `this` to a variable**
+```javascript
+const self = this;
+document.getElementById('refresh').addEventListener('click', function() {
+  self.refreshData(); // Use 'self' instead of 'this'
+});
+```
+
+**Solution 4: Using the third parameter in addEventListener (for event listeners only)**
+```javascript
+document.getElementById('refresh').addEventListener('click', this.refreshData.bind(this));
+// Or with newer browsers that support direct binding:
+document.getElementById('refresh').addEventListener('click', this.refreshData, {bind: this});
+```
+
+A complete solution would look like:
+
+```javascript
+function UserDashboard(container, userData) {
+  this.container = container;
+  this.user = userData;
+  this.initialized = false;
+  
+  this.render = function() {
+    this.container.innerHTML = `
+      <div class="dashboard">
+        <h2>Welcome, ${this.user.name}</h2>
+        <button id="refresh">Refresh Data</button>
+        <div id="user-data">${JSON.stringify(this.user.data)}</div>
+      </div>
+    `;
+    
+    // Solution: Arrow function
+    document.getElementById('refresh').addEventListener('click', () => {
+      this.refreshData();
+    });
+  };
+  
+  this.refreshData = function() {
+    console.log(`Refreshing data for ${this.user.name}`);
+    document.getElementById('user-data').textContent = 'Updated data';
+  };
+  
+  this.initialize = function() {
+    if (this.initialized) return;
+    
+    // Solution: Arrow function
+    setTimeout(() => {
+      this.render();
+    }, 100);
+    
+    this.initialized = true;
+  };
+}
+
+// Usage
+const dashboard = new UserDashboard(
+  document.getElementById('app'), 
+  {name: 'Alice', data: {points: 150}}
+);
+dashboard.initialize();
+```
+
+Understanding `this` is crucial here because:
+1. Without proper `this` binding, component methods wouldn't be accessible in callbacks
+2. State management would be impossible across different methods
+3. Event handlers wouldn't be able to trigger the proper context's actions
+
+This example shows how to create maintainable UI components with proper context binding, which is essential in any significant JavaScript application.
+
+## Topic: Prototype Inheritance
+
+**Interviewer:** Explain JavaScript's prototype inheritance and how it differs from classical inheritance. Also, discuss `Object.create` vs `Object.assign`.
+
+**You:** JavaScript uses **prototypal inheritance**, which is fundamentally different from classical inheritance found in languages like Java or C++.
+
+In prototypal inheritance:
+- Objects inherit directly from other objects
+- There's a prototype chain rather than a class hierarchy
+- An object's prototype is an object itself, not a blueprint
+
+Here's how it works:
+
+1. Every object has an internal `[[Prototype]]` property (accessible via `Object.getPrototypeOf()` or the non-standard `__proto__`)
+2. When accessing a property, JavaScript checks the object itself first
+3. If not found, it checks the object's prototype, then that object's prototype, etc.
+4. This chain eventually ends at `Object.prototype`, which has a null prototype
+
+**Example of prototype inheritance**:
+
+```javascript
+// Constructor function
+function Animal(name) {
+  this.name = name;
+}
+
+// Adding a method to the prototype
+Animal.prototype.speak = function() {
+  return `${this.name} makes a noise.`;
+};
+
+// Inheriting from Animal
+function Dog(name, breed) {
+  Animal.call(this, name); // Call parent constructor
+  this.breed = breed;
+}
+
+// Set up inheritance
+Dog.prototype = Object.create(Animal.prototype);
+Dog.prototype.constructor = Dog; // Fix constructor reference
+
+// Override the speak method
+Dog.prototype.speak = function() {
+  return `${this.name} barks.`;
+};
+
+// Usage
+const dog = new Dog('Rex', 'German Shepherd');
+console.log(dog.speak()); // "Rex barks."
+console.log(dog instanceof Dog); // true
+console.log(dog instanceof Animal); // true
+```
+
+The prototype chain for `dog` is: `dog → Dog.prototype → Animal.prototype → Object.prototype → null`
+
+**Differences from classical inheritance**:
+- No classes in the traditional sense (ES6 classes are syntactic sugar)
+- Inheritance is dynamic and can be modified at runtime
+- Objects inherit from objects, not classes
+- Properties can be added to prototypes at any time
+- No true "private" members (until recent private fields with `#`)
+
+Now for **`Object.create` vs `Object.assign`**:
+
+**`Object.create(proto, [propertiesObject])`** creates a new object with the specified prototype object and optional property descriptors.
+
+```javascript
+const personProto = {
+  greet() {
+    return `Hello, my name is ${this.name}`;
+  }
+};
+
+const alice = Object.create(personProto);
+alice.name = 'Alice';
+console.log(alice.greet()); // "Hello, my name is Alice"
+```
+
+**`Object.assign(target, ...sources)`** copies all enumerable properties from source objects to a target object, returning the modified target.
+
+```javascript
+const defaults = { theme: 'light', fontSize: 12 };
+const userPrefs = { theme: 'dark' };
+
+const settings = Object.assign({}, defaults, userPrefs);
+console.log(settings); // { theme: 'dark', fontSize: 12 }
+```
+
+Key differences:
+- `Object.create` establishes inheritance relationships
+- `Object.assign` copies properties without inheritance
+- `Object.create` sets the prototype chain
+- `Object.assign` does shallow merging of objects
+- `Object.create` can define non-enumerable or getter/setter properties
+
+**Interviewer:** How would you implement inheritance in modern JavaScript? Compare the older prototype approach with ES6 classes and explain any limitations or advantages.
+
+**You:** In modern JavaScript, there are several ways to implement inheritance. Let me compare the approaches and discuss their trade-offs:
+
+**1. ES6 Classes (modern approach)**:
+
+```javascript
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+  
+  speak() {
+    return `${this.name} makes a noise`;
+  }
+}
+
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name);
+    this.breed = breed;
+  }
+  
+  speak() {
+    return `${this.name} barks`;
+  }
+}
+
+const dog = new Dog('Rex', 'German Shepherd');
+```
+
+**2. Prototype-based inheritance (pre-ES6)**:
+
+```javascript
+function Animal(name) {
+  this.name = name;
+}
+
+Animal.prototype.speak = function() {
+  return `${this.name} makes a noise`;
+};
+
+function Dog(name, breed) {
+  Animal.call(this, name);
+  this.breed = breed;
+}
+
+Dog.prototype = Object.create(Animal.prototype);
+Dog.prototype.constructor = Dog;
+
+Dog.prototype.speak = function() {
+  return `${this.name} barks`;
+};
+
+const dog = new Dog('Rex', 'German Shepherd');
+```
+
+**3. Object.create approach (functional/compositional)**:
+
+```javascript
+const animalMethods = {
+  speak() {
+    return `${this.name} makes a noise`;
+  }
+};
+
+function createAnimal(name) {
+  return Object.create(animalMethods, {
+    name: { value: name, writable: true }
+  });
+}
+
+const dogMethods = Object.create(animalMethods);
+dogMethods.speak = function() {
+  return `${this.name} barks`;
+};
+
+function createDog(name, breed) {
+  const dog = Object.create(dogMethods);
+  dog.name = name;
+  dog.breed = breed;
+  return dog;
+}
+
+const dog = createDog('Rex', 'German Shepherd');
+```
+
+**Comparison**:
+
+**ES6 Classes**:
+- Advantages:
+  - Cleaner, more familiar syntax for developers from class-based languages
+  - Built-in constructor management with `super()`
+  - Static methods and fields
+  - Better tooling and IDE support
+  - Private fields with `#` (ES2022)
+  - Clear separation between instance and prototype properties
+
+- Limitations:
+  - Still prototype-based under the hood, which can cause confusion
+  - No true privacy until recent versions (private fields are new)
+  - Less flexible than composition patterns
+  - No multiple inheritance (though mixins can be used)
+
+**Prototype-based approach**:
+- Advantages:
+  - More explicit about JavaScript's prototype mechanics
+  - Dynamic - can modify inheritance chains at runtime
+  - Lighter weight under certain circumstances
+
+- Limitations:
+  - Verbose syntax
+  - Easy to make mistakes with constructor references
+  - No built-in private properties
+
+**Object.create / Compositional approach**:
+- Advantages:
+  - Avoids `new` and constructor complications
+  - More aligned with functional programming
+  - Easier to compose behavior from multiple sources
+  - More flexible than hierarchical inheritance
+
+- Limitations:
+  - Less conventional syntax
+  - Property descriptors can be verbose
+  - Performance overhead in some cases
+
+**In modern code, I prefer**:
+
+1. ES6 classes for most inheritance cases:
+```javascript
+class Component {
+  render() { /* ... */ }
+}
+
+class Button extends Component {
+  render() { /* ... */ }
+}
+```
+
+2. Composition over inheritance when appropriate:
+```javascript
+// Composition with mixins
+const withLogging = Base => class extends Base {
+  log(msg) { console.log(msg); }
+};
+
+const withStorage = Base => class extends Base {
+  save(data) { localStorage.setItem(this.id, JSON.stringify(data)); }
+};
+
+// Apply mixins
+class EnhancedButton extends withStorage(withLogging(Button)) {
+  // Has both logging and storage capabilities
+}
+```
+
+3. Factory functions with composition for complex behavior sharing:
+```javascript
+const createButton = (config) => {
+  // Base object
+  const button = {
+    render() { /* ... */ },
+    // ...
+  };
+  
+  // Conditionally add behaviors
+  if (config.needsLogging) {
+    Object.assign(button, loggingBehavior());
+  }
+  
+  if (config.needsStorage) {
+    Object.assign(button, storageBehavior());
+  }
+  
+  return button;
+};
+```
+
+The best approach depends on the specific requirements, but in modern codebases, I generally favor ES6 classes for their clarity while being aware of their prototype-based implementation.
+
+## Topic: Functional Programming in JavaScript
+
+**Interviewer:** Explain pure functions, higher-order functions, and the concepts of map, reduce, and filter. How do these functional programming concepts benefit JavaScript development?
+
+**You:** **Pure Functions** are functions that:
+1. Given the same input, always return the same output
+2. Have no side effects (don't modify external state)
+3. Don't rely on external state
+
+Example of a pure function:
+```javascript
+// Pure function
+function add(a, b) {
+  return a + b;
+}
+
+// Impure function (has side effects)
+let total = 0;
+function addToTotal(value) {
+  total += value; // Modifies external state
+  return total;
+}
+```
+
+**Higher-Order Functions** are functions that either:
+1. Take one or more functions as arguments, or
+2. Return a function as their result
+
+Examples:
+```javascript
+// Takes a function as an argument
+function executeOperation(operation, a, b) {
+  return operation(a, b);
+}
+
+// Returns a function
+function multiply(factor) {
+  return function(number) {
+    return number * factor;
+  };
+}
+
+const double = multiply(2);
+console.log(double(5)); // 10
+```
+
+**Map, Filter, and Reduce** are higher-order functions for array operations:
+
+**Map** transforms each element in an array:
+```javascript
+const numbers = [1, 2, 3, 4];
+const doubled = numbers.map(num => num * 2);
+// [2, 4, 6, 8]
+```
+
+**Filter** selects elements that satisfy a condition:
+```javascript
+const numbers = [1, 2, 3, 4, 5, 6];
+const evens = numbers.filter(num => num % 2 === 0);
+// [2, 4, 6]
+```
+
+**Reduce** accumulates values into a single result:
+```javascript
+const numbers = [1, 2, 3, 4];
+const sum = numbers.reduce((acc, curr) => acc + curr, 0);
+// 10
+```
+
+**Benefits of functional programming in JavaScript**:
+
+1. **Predictability and testability**:
+   - Pure functions are easier to test because they don't depend on context
+   - Given same inputs, they always produce same outputs
+
+2. **Reduced bugs**:
+   - Immutability prevents unintended state modifications
+   - Side-effect free code is less prone to unexpected behavior
+
+3. **Concise and expressive code**:
+   - Functional methods like map/filter/reduce make intent clearer
+   - Less boilerplate than imperative loops
+
+4. **Composability**:
+   - Functions can be combined to create more complex operations
+   - Enhanced reusability
+
+5. **Parallelization potential**:
+   - Pure functions can theoretically run in parallel safely
+   - No shared state to worry about
+
+6. **Easier reasoning**:
+   - Code becomes more declarative (what to do) vs. imperative (how to do it)
+   - Easier to understand in isolation
+
+Example of composing these concepts:
+```javascript
+// Processing a list of products
+const products = [
+  { id: 1, name: "Laptop", price: 1000, inStock: true },
+  { id: 2, name: "Phone", price: 800, inStock: true },
+  { id: 3, name: "Tablet", price: 500, inStock: false },
+  { id: 4, name: "Headphones", price: 100, inStock: true }
+];
+
+// Functional approach
+const formatPrice = price => `$${price.toFixed(2)}`;
+
+const availableProducts = products
+  .filter(product => product.inStock)
+  .map(product => ({
+    ...product,
+    formattedPrice: formatPrice(product.price)
+  }));
+
+const totalValue = availableProducts
+  .reduce((total, product) => total + product.price, 0);
+
+console.log(`Total inventory value: ${formatPrice(totalValue)}`);
+```
+
+**Interviewer:** Can you implement a `pipe` or `compose` function that allows chaining multiple functions together, and demonstrate its use in a practical scenario?
+
+**You:** Absolutely. I'll implement both `pipe` and `compose` functions, which are essential tools in functional programming for function composition.
+
+`pipe` applies functions from left to right, while `compose` applies them from right to left (mathematically traditional).
+
+```javascript
+// pipe: applies functions from left to right (first to last)
+function pipe(...fns) {
+  return function(initialValue) {
+    return fns.reduce((value, fn) => fn(value), initialValue);
+  };
+}
+
+// compose: applies functions from right to left (last to first)
+function compose(...fns) {
+  return function(initialValue) {
+    return fns.reduceRight((value, fn) => fn(value), initialValue);
+  };
+}
+```
+
+Let's use these in a practical data processing scenario:
+
+```javascript
+// A set of utility functions for data processing
+const trim = str => str.trim();
+const toLowerCase = str => str.toLowerCase();
+const replaceSpaces = str => str.replace(/\s+/g, '-');
+const slugify = pipe(trim, toLowerCase, replaceSpaces);
+
+// Data cleansing functions
+const removeNulls = array => array.filter(item => item != null);
+const removeDuplicates = array => [...new Set(array)];
+const sortAlphabetically = array => [...array].sort();
+const cleanupArray = pipe(removeNulls, removeDuplicates, sortAlphabetically);
+
+// Practical example: Processing user-generated tags for a blog post
+function processUserTags(tags) {
+  // First clean up the array structure
+  const cleanedTagArray = cleanupArray(tags);
+  
+  // Then normalize each tag with slugify
+  return cleanedTagArray.map(slugify);
+}
+
+// Example usage
+const userInput = [
+  '  JavaScript ',
+  null,
+  'Web Development',
+  'JavaScript',
+  '  react  ',
+  undefined,
+  'Node JS'
+];
+
+const processedTags = processUserTags(userInput);
+console.log(processedTags);
+// ["javascript", "node-js", "react", "web-development"]
+```
+
+This implementation demonstrates several functional programming principles:
+
+1. **Function composition** with `pipe`
+2. **Immutability** - not modifying inputs
+3. **Pure functions** - all operations have no side effects
+4. **Higher-order functions** - both in our custom `pipe` and the array methods
+
+Let's extend this example to show more advanced composition:
+
+```javascript
+// Database operations (simulated)
+const fetchUserData = userId => ({
+  id: userId,
+  name: "John Doe",
+  preferences: { theme: "dark", language: "en" }
+});
+
+const fetchUserPosts = userId => [
+  { id: 1, title: "First Post", tags: ["javascript", "react"] },
+  { id: 2, title: "Second Post", tags: ["node", "express"] }
+];
+
+// Transformers
+const extractPreferences = userData => userData.preferences;
+const setDefaultTheme = prefs => ({...prefs, theme: prefs.theme || "light"});
+const formatForClient = prefs => ({
+  theme: prefs.theme.toUpperCase(),
+  language: prefs.language,
+  lastUpdated: new Date().toISOString()
+});
+
+// Post processors
+const countTags = posts => {
+  return posts.reduce((count, post) => {
+    post.tags.forEach(tag => {
+      count[tag] = (count[tag] || 0) + 1;
+    });
+    return count;
+  }, {});
+};
+
+const sortByPopularity = tagCounts => {
+  return Object.entries(tagCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([tag]) => tag);
+};
+
+// Composed operations
+const getUserPreferences = pipe(
+  fetchUserData,
+  extractPreferences,
+  setDefaultTheme,
+  formatForClient
+);
+
+const getPopularUserTags = pipe(
+  fetchUserPosts,
+  countTags,
+  sortByPopularity
+);
+
+// Usage in application
+function getUserDashboardData(userId) {
+  return {
+    preferences: getUserPreferences(userId),
+    popularTags: getPopularUserTags(userId)
+  };
+}
+
+console.log(getUserDashboardData(123));
+/*
+{
+  preferences: {
+    theme: "DARK",
+    language: "en",
+    lastUpdated: "2025-02-28T15:30:42.123Z"
+  },
+  popularTags: ["javascript", "react", "node", "express"]
+}
+*/
+```
+
+This pattern provides several benefits:
+1. Each function has a single responsibility
+2. We can test each step independently
+3. The composition can be reused or reconfigured easily
+4. The code clearly expresses intent through function names
+5. Error handling could be added at specific stages
+
+In modern JavaScript projects, these functional patterns help create more maintainable, testable code with clearer data flows.
+
+## Topic: Promises and Async/Await
+
+**Interviewer:** Explain Promises in JavaScript, their states, and how async/await builds on top of them. Can you showcase error handling with both approaches?
+
+**You:** **Promises** are objects representing the eventual completion or failure of an asynchronous operation. They provide a way to handle asynchronous operations more elegantly than callbacks.
+
+**Promise States**:
+1. **Pending**: Initial state, the operation is not completed yet
+2. **Fulfilled**: The operation completed successfully
+3. **Rejected**: The operation failed
+4. **Settled**: The promise is either fulfilled or rejected, but not pending
+
+**Creating and using Promises**:
+```javascript
+const fetchUserData = (userId) => {
+  return new Promise((resolve, reject) => {
+    // Simulate API call
+    setTimeout(() => {
+      if (userId > 0) {
+        resolve({ id: userId, name: 'User ' + userId });
+      } else {
+        reject(new Error('Invalid user ID'));
+      }
+    }, 1000);
+  });
+};
+
+// Using promises with .then/.catch
+fetchUserData(123)
+  .then(user => {
+    console.log('User data:', user);
+    return fetchUserData(456); // Chaining promises
+  })
+  .then(secondUser => {
+    console.log('Second user:', secondUser);
+  })
+  .catch(error => {
+    console.error('Error fetching user:', error.message);
+  })
+  .finally(() => {
+    console.log('Operation completed');
+  });
+```
+
+**Promise methods**:
+- `Promise.resolve(value)`: Creates a fulfilled promise
+- `Promise.reject(error)`: Creates a rejected promise
+- `Promise.all(iterable)`: Waits for all promises to fulfill (rejects if any reject)
+- `Promise.race(iterable)`: Settles when the first promise settles
+- `Promise.allSettled(iterable)`: Waits for all promises to settle regardless of state
+- `Promise.any(iterable)`: Fulfills when any promise fulfills (rejects if all reject)
+
+**Async/Await** is syntactic sugar over Promises that makes asynchronous code look more like synchronous code:
+
+```javascript
+async function getUserData(userId) {
+  try {
+    const user = await fetchUserData(userId);
+    console.log('User data:', user);
+    
+    const secondUser = await fetchUserData(456);
+    console.log('Second user:', secondUser);
+    
+    return { mainUser: user, secondUser };
+  } catch (error) {
+    console.error('Error in getUserData:', error.message);
+    throw error; // Re-throwing for upper-level handling
+  } finally {
+    console.log('Operation completed');
+  }
+}
+
+// Calling the async function
+getUserData(123)
+  .then(result => console.log('Final result:', result))
+  .catch(error => console.error('Outer error handler:', error.message));
+```
+
+**Error handling comparison**:
+
+**With Promises**:
+```javascript
+function processUserData(userId) {
+  return fetchUserData(userId)
+    .then(user => {
+      if (!user.isActive) {
+        throw new Error('User is inactive');
+      }
+      return fetchUserPosts(user.id);
+    })
+    .then(posts => {
+      return processPosts(posts);
+    })
+    .catch(error => {
+      // Handle all errors from any step
+      if (error.message === 'User is inactive') {
+        return { posts: [], reason: 'inactive_user' };
+      }
+      
+      // Log the error and rethrow for upper-level handling
+      console.error('Processing error:', error);
+      throw error;
+    });
+}
+```
+
+**
