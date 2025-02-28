@@ -1,602 +1,985 @@
-Let’s simulate an interview for a senior JavaScript role where I’ll explain the listed concepts clearly and concisely, as I would in a real interview setting. I’ll include the interviewer’s questions, my responses, and anticipate follow-up questions with prepared answers to demonstrate depth of knowledge. Here we go!
+# Senior JavaScript Interview Simulation
 
----
+I'll simulate an interview for a senior JavaScript role, covering the concepts you've mentioned. I'll structure this as a Q&A format with interviewer questions and candidate responses, including follow-up questions.
 
-### Interviewer: "Let’s start with the Call Stack. Can you explain what it is?"
+## Topic: Call Stack
 
-**My Answer:**  
-The call stack is a core mechanism in JavaScript that tracks function execution. It operates as a Last In, First Out (LIFO) data structure. When a function is called, it’s pushed onto the stack. When it completes, it’s popped off. This keeps track of the program’s execution context. For example, if `function A` calls `function B`, and `B` calls `C`, the stack builds up with `A` at the bottom, `B` in the middle, and `C` at the top. As each function finishes, it’s removed in reverse order.
+**Interviewer:** Can you explain how the JavaScript call stack works and its limitations?
 
----
+**You:** The call stack in JavaScript is a data structure that records where in the program we are. When we call a function, it's pushed onto the stack, and when we return from a function, it's popped off the stack. JavaScript is single-threaded, meaning it has one call stack and can do one thing at a time.
 
-### Follow-up: "What happens if a recursive function goes too deep?"
+A key limitation is stack overflow - if the call stack exceeds its maximum size (which happens with excessive recursion), we get a "Maximum call stack size exceeded" error. Another limitation is that long-running operations block the stack, which is why asynchronous operations are handled separately.
 
-**My Answer:**  
-If a recursive function lacks a proper base case and keeps calling itself, it adds layers to the call stack indefinitely. Eventually, this causes a *stack overflow error* because the stack has a finite size—typically a few thousand frames, depending on the engine. To avoid this, you’d implement a base case, like `if (n <= 0) return`, or use tail recursion if the engine optimizes it, though JavaScript engines like V8 don’t yet support tail call optimization natively.
+**Interviewer:** How does the call stack interact with asynchronous code in JavaScript?
 
----
+**You:** Asynchronous operations in JavaScript don't actually run in parallel on the call stack. When an async operation like setTimeout or a fetch request is encountered, the callback is registered and the operation is handed off to Web APIs (in browsers) or the C++ APIs (in Node.js). 
 
-### Interviewer: "Next, tell me about Primitive Types in JavaScript."
+The main call stack continues executing code. When the async operation completes, its callback is placed in the callback queue (or job queue for promises). The event loop checks if the call stack is empty, and if so, it takes the first item from the queue and pushes it onto the call stack for execution.
 
-**My Answer:**  
-JavaScript has six primitive types: `undefined`, `null`, `boolean`, `number`, `string`, and `symbol` (added in ES6). These are the basic, immutable data types. Immutable means you can’t alter their value after creation—you can reassign a variable, but the original value itself doesn’t change. Primitives are the foundation of all data in JavaScript.
+This mechanism allows JavaScript to handle non-blocking operations despite being single-threaded.
 
----
+## Topic: Primitive Types vs Reference Types
 
-### Follow-up: "What’s the difference between `null` and `undefined`?"
+**Interviewer:** What's the difference between primitive and reference types in JavaScript?
 
-**My Answer:**  
-`undefined` indicates a variable has been declared but not assigned a value—it’s the default state. `null`, however, is an explicit assignment meaning "no value" or "empty." Programmers set `null` intentionally, like resetting an object reference, while `undefined` is typically what you get before initialization or when a function doesn’t return anything explicitly.
+**You:** JavaScript has seven primitive types: String, Number, BigInt, Boolean, Symbol, undefined, and null. These are immutable and stored directly in the variable's memory location. When you assign or pass primitives, you're working with their actual values.
 
----
+Reference types (objects, arrays, functions) are stored in memory, and variables hold references to these memory locations. When you assign or pass references, you're working with pointers to the data, not the data itself.
 
-### Interviewer: "How do Value Types and Reference Types differ?"
+This difference is important because:
+- Primitives are compared by value: `5 === 5` is true
+- References are compared by reference: `{} === {}` is false because they're different objects in memory
+- Modifying a reference affects all variables pointing to that reference
 
-**My Answer:**  
-Value types are primitives—`number`, `string`, etc.—and are copied by their value. If I assign `let a = 5; let b = a;`, `b` gets a new copy of `5`. Changing `b` doesn’t affect `a`. Reference types are objects, including arrays and functions, and are copied by reference. If I do `let obj1 = {x: 1}; let obj2 = obj1;`, `obj2` points to the same object in memory. Modifying `obj2.x` changes `obj1.x` too, because they share a reference.
+**Interviewer:** Can you demonstrate a practical scenario where understanding this difference is crucial?
 
----
-
-### Follow-up: "How does this impact equality comparisons?"
-
-**My Answer:**  
-For value types, `==` and `===` compare the actual values. For reference types, they compare the memory reference. So, `let a = [1]; let b = [1];` results in `a !== b` because they’re different objects, even with identical contents. To compare object contents, you’d need a deep comparison function.
-
----
-
-### Interviewer: "Explain Implicit, Explicit, Nominal, Structural, and Duck Typing."
-
-**My Answer:**  
-- **Implicit Typing:** JavaScript is dynamically typed—types are inferred at runtime. You don’t declare `int x`; just `let x = 5`.
-- **Explicit Typing:** Seen in languages like TypeScript, where you specify types, e.g., `let x: number = 5`.
-- **Nominal Typing:** Type compatibility is based on explicit type names. JavaScript doesn’t use this.
-- **Structural Typing:** JavaScript uses this—types are compatible if their structures match, regardless of names.
-- **Duck Typing:** If an object has the required properties or methods, it’s treated as the right type. "If it walks like a duck and quacks like a duck, it’s a duck."
-
-Here’s a duck typing example:
+**You:** Absolutely. Consider this code:
 
 ```javascript
-function speak(animal) {
-  animal.speak();
-}
-let duck = { speak: () => console.log("Quack") };
-speak(duck); // Works because duck has a speak method
+// With primitives
+let a = 5;
+let b = a;
+a = 10;
+console.log(b); // Still 5, unchanged
+
+// With references
+let obj1 = { name: "Alice" };
+let obj2 = obj1;
+obj1.name = "Bob";
+console.log(obj2.name); // "Bob" - both references point to the same object
 ```
 
----
+This becomes critical in functions where you might unintentionally mutate objects:
 
-### Follow-up: "When might duck typing cause issues?"
+```javascript
+function updateUser(user) {
+  user.verified = true; // This modifies the original object
+}
 
-**My Answer:**  
-Duck typing can lead to runtime errors if an object lacks an expected method or property not checked upfront. For instance, if `animal.speak` doesn’t exist, you’ll get a TypeError. You could mitigate this with guards like `if (typeof animal.speak === 'function')`.
+const user = { name: "John", verified: false };
+updateUser(user);
+console.log(user.verified); // true - original object was changed
+```
 
----
+Understanding this helps avoid bugs where you unintentionally modify data, and it informs when you should create copies using techniques like spread syntax or `Object.assign()`.
 
-### Interviewer: "What’s the difference between `==`, `===`, and `typeof`?"
+## Topic: Type Coercion and Equality Operators
 
-**My Answer:**  
-- `==` is loose equality—it coerces types before comparing. So, `5 == "5"` is `true`.
-- `===` is strict equality—no coercion; it checks value and type. `5 === "5"` is `false`.
-- `typeof` is an operator returning a string of the operand’s type, like `typeof 5` returns `"number"`. It’s useful for type checking.
+**Interviewer:** Explain the difference between `==` and `===` in JavaScript and when you'd use each.
 
----
+**You:** The `==` (loose equality) operator compares values after type coercion, meaning it tries to convert values to the same type before comparison. The `===` (strict equality) operator compares both value and type without coercion.
 
-### Follow-up: "When would you use `==` instead of `===`?"
+Examples:
+```javascript
+5 == "5"     // true - string "5" is coerced to number 5
+5 === "5"    // false - different types
+null == undefined  // true - they coerce to the same value
+null === undefined  // false - different types
+```
 
-**My Answer:**  
-I’d rarely use `==` because coercion can lead to bugs, like `0 == false` being `true`. But it’s handy when you intentionally want type flexibility, like comparing user input (a string) to a number without manual conversion. Still, `===` is safer and more predictable, so it’s my default.
+I generally prefer `===` in most situations because:
+1. It's more predictable and less prone to subtle bugs
+2. It makes code intentions clearer
+3. It's usually better for performance
 
----
+I might use `==` in specific cases like checking if a value is either null or undefined with `value == null`, but these cases are rare and should be well-commented.
 
-### Interviewer: "Describe Function Scope, Block Scope, and Lexical Scope."
+**Interviewer:** What about the `typeof` operator? What are its quirks and limitations?
 
-**My Answer:**  
-- **Function Scope:** Variables declared with `var` are scoped to the enclosing function. They’re accessible anywhere in that function.
-- **Block Scope:** `let` and `const` limit variables to the block they’re declared in, like an `if` or `for` block.
-- **Lexical Scope:** Scope is defined by where variables are written in the code. Inner functions can access outer function variables due to closures.
+**You:** `typeof` returns a string indicating the type of an operand. Its quirks include:
 
-Example:
+1. `typeof null` returns `"object"` instead of `"null"` - this is a long-standing bug in JavaScript
+2. All objects (except functions) return `"object"`, regardless of their specific type
+3. `typeof` for arrays returns `"object"`, not `"array"`
+4. Functions return `"function"`
+
+For example:
+```javascript
+typeof {}           // "object"
+typeof []           // "object" - not "array"
+typeof null         // "object" - a historical bug
+typeof function(){} // "function"
+typeof undefined    // "undefined"
+typeof NaN          // "number" - despite meaning "Not a Number"
+```
+
+For more precise type checking, I'd use:
+- `Array.isArray()` for arrays
+- `value === null` for null
+- `Object.prototype.toString.call(value)` for more specific object types
+
+## Topic: Scopes
+
+**Interviewer:** Describe the differences between function scope, block scope, and lexical scope.
+
+**You:** **Function scope**: In JavaScript, variables declared with `var` are function-scoped, meaning they're accessible within the entire function they're declared in, regardless of block nesting.
+
+**Block scope**: Variables declared with `let` and `const` (introduced in ES6) are block-scoped, meaning they're only accessible within the block (denoted by `{}`) they're declared in.
+
+**Lexical scope** (or static scope): This means a variable's scope is determined by its position in the source code. Inner functions have access to variables in their outer scope chain, all the way up to the global scope.
 
 ```javascript
 function outer() {
-  let x = 10;
+  const a = 1; // Accessible throughout outer and inner
+  
+  if (true) {
+    let b = 2; // Block-scoped to this if block
+    var c = 3; // Function-scoped to outer
+  }
+  
   function inner() {
-    console.log(x); // Lexical scope: inner sees outer’s x
+    const d = 4; // Scoped to inner
+    console.log(a); // Can access a from outer (lexical scope)
+    console.log(c); // Can access c from outer
   }
-  inner();
+  
+  console.log(b); // ReferenceError: b is not defined
+  console.log(c); // Works, c is 3
 }
 ```
 
----
+**Interviewer:** How would you use scope to create private variables in JavaScript, both before and after ES6 classes were introduced?
 
-### Follow-up: "How does `var` differ from `let` here?"
-
-**My Answer:**  
-`var` is function-scoped, so it’s hoisted and accessible throughout the function, even if declared in a block. `let` is block-scoped, so it’s confined to that block. For example:
+**You:** Before ES6, the primary way to create private variables was through closures:
 
 ```javascript
-if (true) {
-  var x = 1;
-  let y = 2;
+function createCounter() {
+  // privateCount is private, only accessible to the returned functions
+  let privateCount = 0;
+  
+  return {
+    increment() {
+      privateCount++;
+    },
+    getValue() {
+      return privateCount;
+    }
+  };
 }
-console.log(x); // 1
-console.log(y); // ReferenceError
+
+const counter = createCounter();
+counter.increment();
+console.log(counter.getValue()); // 1
+console.log(counter.privateCount); // undefined - can't access directly
 ```
 
----
+With ES6+ classes, we have several options:
+
+1. Conventionally with underscores (not truly private):
+```javascript
+class Counter {
+  constructor() {
+    this._count = 0; // Convention indicates "private"
+  }
+}
+```
+
+2. Using WeakMaps (more complex but actually private):
+```javascript
+const _count = new WeakMap();
+
+class Counter {
+  constructor() {
+    _count.set(this, 0);
+  }
+  
+  increment() {
+    _count.set(this, _count.get(this) + 1);
+  }
+}
+```
+
+3. Using private class fields with `#` (modern approach, ES2022):
+```javascript
+class Counter {
+  #count = 0; // Truly private
+  
+  increment() {
+    this.#count++;
+  }
+  
+  get value() {
+    return this.#count;
+  }
+}
+```
+
+I prefer the latest approach with `#` when targeting modern environments since it's cleaner and has language-level support.
+
+## Topic: Expressions vs Statements
+
+**Interviewer:** What's the difference between an expression and a statement in JavaScript?
+
+**You:** An **expression** is a piece of code that produces a value. Examples include literals (`5`, `"hello"`), arithmetic operations (`x + y`), function calls (`foo()`), and more. Expressions can be assigned to variables or used as arguments.
+
+A **statement** is a larger unit of code that performs an action but doesn't produce a value directly. Examples include variable declarations (`let x = 5;`), control flow statements (`if`, `for`, `while`), and function declarations.
+
+The key distinction: expressions produce values, statements perform actions.
+
+Some examples:
+```javascript
+// Expressions
+5 + 5
+Math.random()
+a && b
+(() => "hello")()
+
+// Statements
+if (condition) { /* code */ }
+for (let i = 0; i < 10; i++) { /* code */ }
+function foo() { /* code */ }
+```
+
+One practical consequence is that expressions can be used in more places. For instance, you can use an expression in a template literal, but not a statement:
+```javascript
+// Works - expression
+const greeting = `Hello ${name.toUpperCase()}`;
+
+// Doesn't work - statement
+const greeting = `Hello ${if (formal) { return "Sir"; } else { return "friend"; }}`;
+```
+
+**Interviewer:** Can you explain expression statements and the difference between function declarations and function expressions?
+
+**You:** An **expression statement** is a statement consisting of a single expression followed by a semicolon. For example, `console.log("hello");` uses the expression `console.log("hello")` as a statement.
+
+**Function declaration** vs **function expression**:
+
+Function declaration:
+```javascript
+function add(a, b) {
+  return a + b;
+}
+```
+
+Function expression:
+```javascript
+const add = function(a, b) {
+  return a + b;
+};
+```
+
+Key differences:
+1. **Hoisting**: Function declarations are hoisted entirely - you can call them before they appear in the code. Function expressions are not fully hoisted - the variable is hoisted but its assignment is not.
+
+2. **Context usage**: Function expressions can be used as arguments, in IIFEs, and anywhere expressions are valid.
+
+3. **Named function expressions**:
+```javascript
+const factorial = function fact(n) {
+  return n <= 1 ? 1 : n * fact(n - 1);
+};
+// fact is only accessible inside the function itself
+```
 
-### Interviewer: "What’s the difference between an Expression and a Statement?"
+Understanding this distinction is important for controlling scope, avoiding hoisting-related bugs, and creating more modular code.
 
-**My Answer:**  
-An expression produces a value, like `3 + 5` or `myFunc()`. A statement performs an action, like `if`, `for`, or `let x = 10`. Expressions can be part of statements, but not vice versa.
+## Topic: IIFEs, Modules, and Namespaces
 
----
+**Interviewer:** Explain the purpose of IIFEs and how module systems have evolved in JavaScript.
 
-### Follow-up: "Can an expression be a statement?"
-
-**My Answer:**  
-Yes, an expression can stand alone as an expression statement. For example, `console.log("Hi");` is an expression (a function call) used as a statement to execute an action.
-
----
-
-### Interviewer: "Tell me about IIFE, Modules, and Namespaces."
-
-**My Answer:**  
-- **IIFE (Immediately Invoked Function Expression):** A function defined and called immediately, like `(function() { console.log("Run"); })()`. It creates a private scope.
-- **Modules:** JavaScript’s way to encapsulate code using `import` and `export`. They keep variables private unless exported.
-- **Namespaces:** An older pattern where you group code under an object, like `MyApp.utils = {}`.
-
----
-
-### Follow-up: "Why use an IIFE?"
-
-**My Answer:**  
-IIFEs prevent polluting the global scope and initialize code immediately. For example, to set up a one-time config without leaving variables hanging around.
-
----
-
-### Interviewer: "Explain the Message Queue and Event Loop."
-
-**My Answer:**  
-The event loop enables JavaScript’s non-blocking nature. The call stack executes synchronous code. Asynchronous tasks (like `setTimeout`) go to the browser/Node.js APIs, then their callbacks land in the message queue. When the stack is empty, the event loop pushes the next queue message to the stack for execution.
-
----
-
-### Follow-up: "How does it handle async operations?"
-
-**My Answer:**  
-Async operations are offloaded to the runtime environment. When complete (e.g., a timer fires), a callback is queued. The event loop waits for the stack to clear, then processes the queue, ensuring async code runs smoothly without blocking.
-
----
-
-### Interviewer: "What’s the difference between `setTimeout`, `setInterval`, and `requestAnimationFrame`?"
-
-**My Answer:**  
-- `setTimeout`: Runs a function once after a delay, e.g., `setTimeout(() => console.log("Hi"), 1000)`.
-- `setInterval`: Runs a function repeatedly every X milliseconds until cleared.
-- `requestAnimationFrame`: Schedules a function before the next browser repaint, ideal for smooth animations at ~60fps.
-
----
-
-### Follow-up: "Why prefer `requestAnimationFrame` for animations?"
-
-**My Answer:**  
-Unlike `setTimeout`, `requestAnimationFrame` syncs with the browser’s refresh rate, reducing jank and optimizing performance. It also pauses when the tab is inactive, saving resources.
-
----
-
-### Interviewer: "What are JavaScript Engines?"
-
-**My Answer:**  
-JavaScript engines execute JS code. Examples include V8 (Chrome, Node.js), SpiderMonkey (Firefox), and JavaScriptCore (Safari). They parse code, compile it to machine code, and run it, often using JIT (Just-In-Time) compilation for speed.
-
----
-
-### Follow-up: "What optimizations do they perform?"
-
-**My Answer:**  
-They use JIT to compile code at runtime, inline caching for faster property access, and hidden classes to optimize object property lookups based on their shape.
-
----
-
-### Interviewer: "Explain Bitwise Operators, Typed Arrays, and Array Buffers."
-
-**My Answer:**  
-- **Bitwise Operators:** Work on binary representations, e.g., `&` (AND), `|` (OR), `^` (XOR).
-- **Typed Arrays:** Fixed-type arrays like `Int32Array` for efficient numeric operations.
-- **Array Buffers:** Raw binary data that typed arrays view, like a memory buffer.
-
----
-
-### Follow-up: "When are typed arrays useful?"
-
-**My Answer:**  
-They’re great for performance-critical tasks like WebGL or processing binary data, where regular arrays would be slower due to dynamic typing.
-
----
-
-### Interviewer: "What are DOM and Layout Trees?"
-
-**My Answer:**  
-- **DOM:** The Document Object Model, a tree representation of HTML that JavaScript manipulates.
-- **Layout Trees (Render Trees):** Built from the DOM and CSSOM, it’s what the browser uses to compute element positions and render the page.
-
----
-
-### Follow-up: "How does rendering work with these?"
-
-**My Answer:**  
-The browser parses HTML to a DOM, combines it with CSS to form the render tree, calculates layouts (position/size), then paints pixels to the screen.
-
----
-
-### Interviewer: "Factories vs Classes—what’s the difference?"
-
-**My Answer:**  
-- **Factories:** Functions that return objects, e.g., `function createUser(name) { return {name}; }`.
-- **Classes:** ES6 syntax for prototype-based inheritance, e.g., `class User { constructor(name) { this.name = name; } }`. Classes are more structured; factories are more flexible.
-
----
-
-### Follow-up: "When would you choose a factory?"
-
-**My Answer:**  
-Factories are great for simple object creation or when you need dynamic composition without inheritance overhead.
-
----
-
-### Interviewer: "Explain `this`, `call`, `apply`, and `bind`."
-
-**My Answer:**  
-- **`this`:** Refers to the execution context, determined by how a function is called.
-- **`call`:** Calls a function with a specific `this` and arguments, e.g., `func.call(obj, arg1, arg2)`.
-- **`apply`:** Like `call`, but args are an array, e.g., `func.apply(obj, [arg1, arg2])`.
-- **`bind`:** Returns a new function with `this` fixed, e.g., `const bound = func.bind(obj)`.
-
----
-
-### Follow-up: "How does `this` work in arrow functions?"
-
-**My Answer:**  
-Arrow functions don’t bind their own `this`—they inherit it lexically from the enclosing scope, making them great for callbacks where you want outer context.
-
----
-
-### Interviewer: "What’s `new`, Constructor, `instanceof`, and Instances?"
-
-**My Answer:**  
-- **`new`:** Creates an instance from a constructor function.
-- **Constructor:** A function designed for `new`, setting up `this`.
-- **`instanceof`:** Checks if an object’s prototype chain includes a constructor’s prototype.
-- **Instances:** Objects created via `new`.
-
----
-
-### Follow-up: "What if you skip `new`?"
-
-**My Answer:**  
-Without `new`, `this` defaults to the global object (e.g., `window`), which can overwrite globals unintentionally.
-
----
-
-### Interviewer: "How does Prototype Inheritance and the Prototype Chain work?"
-
-**My Answer:**  
-JavaScript uses prototypes for inheritance. Objects have a `__proto__` linking to their prototype. If a property isn’t found, it’s looked up the chain. For example, `Array.prototype` gives arrays methods like `push`.
-
----
-
-### Follow-up: "How do you add a method to all instances?"
-
-**My Answer:**  
-Add it to the prototype: `MyClass.prototype.newMethod = function() {};`.
-
----
-
-### Interviewer: "What’s `Object.create` vs `Object.assign`?"
-
-**My Answer:**  
-- **`Object.create`:** Creates an object with a specified prototype, e.g., `Object.create(proto)`.
-- **`Object.assign`:** Copies properties from source objects to a target, e.g., `Object.assign(target, source)`.
-
----
-
-### Follow-up: "How’s `Object.create` different from `new`?"
-
-**My Answer:**  
-`Object.create` sets the prototype directly without calling a constructor, while `new` runs the constructor and uses its prototype.
-
----
-
-### Interviewer: "Explain `map`, `reduce`, and `filter`."
-
-**My Answer:**  
-- **`map`:** Transforms each element, returning a new array, e.g., `[1,2].map(x => x * 2)` → `[2,4]`.
-- **`reduce`:** Accumulates a single value, e.g., `[1,2,3].reduce((sum, x) => sum + x, 0)` → `6`.
-- **`filter`:** Returns elements passing a test, e.g., `[1,2,3].filter(x => x > 1)` → `[2,3]`.
-
----
-
-### Follow-up: "Can you write a custom `map`?"
-
-**My Answer:**  
+**You:** **Immediately Invoked Function Expressions (IIFEs)** are functions that are executed immediately after they're created. They were one of the earliest patterns for creating private scopes in JavaScript:
 
 ```javascript
-function myMap(arr, fn) {
-  const result = [];
+(function() {
+  // Private scope
+  const secret = "I'm private";
+  
+  // Expose public functionality
+  window.publicAPI = {
+    doSomething() {
+      console.log(secret);
+    }
+  };
+})();
+```
+
+The primary purposes of IIFEs are:
+1. Creating private scopes to avoid polluting the global namespace
+2. Isolating variables from the outer scope
+3. Creating modules/namespaces
+
+**Module evolution in JavaScript**:
+
+1. **IIFE-based modules**: The original module pattern as shown above
+
+2. **CommonJS** (used in Node.js):
+```javascript
+// math.js
+module.exports = {
+  add: (a, b) => a + b
+};
+
+// main.js
+const math = require('./math');
+math.add(2, 3);
+```
+
+3. **AMD (Asynchronous Module Definition)** for browsers:
+```javascript
+define(['dep1', 'dep2'], function(dep1, dep2) {
+  return {
+    method: function() {}
+  };
+});
+```
+
+4. **ES Modules** (the modern standard):
+```javascript
+// math.js
+export const add = (a, b) => a + b;
+
+// main.js
+import { add } from './math.js';
+add(2, 3);
+```
+
+ES Modules provide several advantages:
+- Static analysis (imports/exports known at compile time)
+- Better tree-shaking
+- Explicit bindings (named exports)
+- Asynchronous loading with dynamic imports
+
+**Interviewer:** How would you handle namespacing in a large JavaScript application today?
+
+**You:** In modern JavaScript development, I'd approach namespacing primarily through ES modules, which naturally create scope boundaries and explicit exports.
+
+For a large application, I would:
+
+1. **Use a module bundler** like Webpack, Rollup, or esbuild that supports ES modules
+
+2. **Structure the application with clear module boundaries**:
+```
+src/
+  features/
+    user/
+      index.js       # Public API for the feature
+      models.js      # Internal components
+      services.js
+    products/
+      index.js
+      ...
+  shared/
+    utils/
+      index.js
+```
+
+3. **Use explicit imports/exports** to control public API surface:
+```javascript
+// features/user/index.js
+import { User } from './models';
+import { createUser } from './services';
+
+// Only expose what's needed
+export { User, createUser };
+```
+
+4. **For global services or state**, use singleton modules:
+```javascript
+// auth.js
+let currentUser = null;
+
+export function login(user) { currentUser = user; }
+export function getUser() { return currentUser; }
+```
+
+This approach scales well because:
+- It provides clear boundaries between features
+- Tooling can analyze dependencies
+- Teams can work independently on different modules
+- It enables incremental loading and code-splitting
+- It's the standard approach in modern frameworks
+
+## Topic: Event Loop and Asynchronous JavaScript
+
+**Interviewer:** Explain the event loop in JavaScript. How do setTimeout, setInterval, and requestAnimationFrame differ?
+
+**You:** The **JavaScript Event Loop** is a mechanism that allows JavaScript to perform non-blocking operations despite being single-threaded. Here's how it works:
+
+1. The call stack executes synchronous code.
+2. When an asynchronous operation is encountered (like setTimeout), it's delegated to browser/Node.js APIs.
+3. Once completed, the callback is placed in a task queue.
+4. The event loop continuously checks if the call stack is empty, and if so, moves the first task from the queue to the stack.
+
+There are actually multiple queues:
+- The task queue (macrotask queue) for callbacks from setTimeout, events, etc.
+- The microtask queue for promises, which has higher priority
+
+**Differences between timing functions**:
+
+**setTimeout**:
+- Schedules a callback to run once after a specified delay
+- Not guaranteed to run exactly at the specified time, just not sooner
+- Minimum delay is ~4ms in most browsers (when nested or after inactivity)
+```javascript
+setTimeout(() => console.log("Later"), 1000);
+```
+
+**setInterval**:
+- Schedules a callback to run repeatedly with a fixed time delay between executions
+- Same timing limitations as setTimeout
+- Interval timing is maintained regardless of how long the callback takes to execute
+```javascript
+const id = setInterval(() => console.log("Repeat"), 1000);
+// Later: clearInterval(id);
+```
+
+**requestAnimationFrame**:
+- Schedules a callback to execute before the next browser repaint
+- Optimized for animations - typically runs at 60fps (16.7ms) but syncs with the display refresh rate
+- Automatically pauses in inactive tabs or hidden iframes
+- Better performance and battery life for visual updates
+```javascript
+function animate() {
+  // Update animation
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+```
+
+The key practical difference is their use cases:
+- `setTimeout`: Delaying actions
+- `setInterval`: Recurring actions that aren't visually sensitive
+- `requestAnimationFrame`: Visual updates and animations
+
+**Interviewer:** How would you implement a throttle function using these timing methods?
+
+**You:** A throttle function limits how often a function can be called. Here's an implementation using setTimeout:
+
+```javascript
+function throttle(func, delay) {
+  let lastCall = 0;
+  let timeout = null;
+  
+  return function(...args) {
+    const now = Date.now();
+    const remaining = delay - (now - lastCall);
+    
+    if (remaining <= 0) {
+      // Execute immediately
+      clearTimeout(timeout);
+      timeout = null;
+      lastCall = now;
+      func.apply(this, args);
+    } else if (!timeout) {
+      // Schedule for remaining time
+      timeout = setTimeout(() => {
+        lastCall = Date.now();
+        timeout = null;
+        func.apply(this, args);
+      }, remaining);
+    }
+  };
+}
+
+// Usage
+const throttledScroll = throttle(() => console.log("Scrolled"), 300);
+window.addEventListener("scroll", throttledScroll);
+```
+
+For animations, I'd use requestAnimationFrame instead:
+
+```javascript
+function rafThrottle(func) {
+  let scheduled = false;
+  
+  return function(...args) {
+    if (!scheduled) {
+      scheduled = true;
+      
+      requestAnimationFrame(() => {
+        scheduled = false;
+        func.apply(this, args);
+      });
+    }
+  };
+}
+
+// Usage for visual updates
+const throttledMouseMove = rafThrottle((e) => updateUI(e.clientX, e.clientY));
+document.addEventListener("mousemove", throttledMouseMove);
+```
+
+The requestAnimationFrame version is better for visual updates because it naturally syncs with the browser's paint cycle, providing smoother animations and better performance.
+
+## Topic: JavaScript Engines
+
+**Interviewer:** How do JavaScript engines work, and what optimizations do they employ?
+
+**You:** JavaScript engines convert JavaScript code into machine code for execution. The most well-known engines are V8 (Chrome, Node.js), SpiderMonkey (Firefox), and JavaScriptCore (Safari).
+
+The typical processing pipeline includes:
+
+1. **Parsing**: The source code is parsed into an Abstract Syntax Tree (AST)
+2. **Compilation**: Modern engines use Just-In-Time (JIT) compilation
+   - First, a baseline interpreter executes code quickly but not optimally
+   - As code runs repeatedly, the engine identifies "hot" code paths
+   - These hot paths are optimized and compiled to highly efficient machine code
+3. **Execution**: The compiled code runs
+4. **Garbage Collection**: Memory is managed and reclaimed when no longer needed
+
+Key optimizations include:
+
+1. **Inline caching**: Caching property lookups to avoid repeated object shape checks
+2. **Hidden classes**: Tracking object shapes internally to optimize property access
+3. **Function inlining**: Replacing function calls with the function body
+4. **Type specialization**: Optimizing code paths for specific types
+5. **Deoptimization**: Falling back to slower execution when assumptions are violated
+
+For example, with V8:
+```javascript
+function add(a, b) {
+  return a + b;
+}
+
+// Initially interpreted
+add(1, 2);
+
+// After many calls with numbers, optimized for numbers
+for (let i = 0; i < 10000; i++) {
+  add(i, i+1);
+}
+
+// Deoptimization triggered
+add("hello", "world"); // Different types!
+```
+
+**Interviewer:** What practices can developers follow to help JavaScript engines optimize their code?
+
+**You:** To help JavaScript engines optimize code, developers should:
+
+1. **Be consistent with types**: 
+```javascript
+// Good - consistent types
+function sum(arr) {
+  let total = 0;  // Always a number
   for (let i = 0; i < arr.length; i++) {
-    result.push(fn(arr[i], i, arr));
+    total += arr[i];
   }
-  return result;
+  return total;
 }
 ```
 
----
-
-### Interviewer: "What are Pure Functions, Side Effects, State Mutation, and Event Propagation?"
-
-**My Answer:**  
-- **Pure Functions:** Same input, same output, no side effects—like `Math.max`.
-- **Side Effects:** External changes, e.g., modifying a global variable.
-- **State Mutation:** Altering an object’s state, e.g., `obj.x = 5`.
-- **Event Propagation:** Events bubbling up or capturing down the DOM.
-
----
-
-### Follow-up: "Why prefer pure functions?"
-
-**My Answer:**  
-They’re predictable, testable, and enable optimizations like memoization.
-
----
-
-### Interviewer: "What’s a Closure?"
-
-**My Answer:**  
-A closure is a function that retains access to its outer scope’s variables after the outer function finishes. Example:
-
+2. **Avoid property changes after initialization**:
 ```javascript
-function outer() {
-  let x = 1;
-  return () => x++;
-}
-const inc = outer();
-console.log(inc()); // 1
-console.log(inc()); // 2
+// Good
+const user = {
+  name: "Alice", 
+  age: 30
+};
+
+// Bad for optimization
+user.location = "New York"; // Changes object shape
 ```
 
----
-
-### Follow-up: "Where’s this useful?"
-
-**My Answer:**  
-Closures are key for data privacy, callbacks, and maintaining state, like in event handlers.
-
----
-
-### Interviewer: "What are Higher-Order Functions?"
-
-**My Answer:**  
-Functions that take or return other functions, like `map` or this:
-
+3. **Use modern array methods** instead of complex for loops:
 ```javascript
-function withLog(fn) {
-  return (...args) => {
-    console.log("Calling", fn.name);
-    return fn(...args);
+// More optimizable
+const doubled = numbers.map(n => n * 2);
+```
+
+4. **Avoid `arguments` object** and use rest parameters instead:
+```javascript
+// Better
+function log(...args) {
+  console.log(...args);
+}
+```
+
+5. **Avoid `eval()` and `with` statements** completely
+
+6. **Minimize polymorphic operations**:
+```javascript
+// Instead of this:
+function process(obj) {
+  return obj.process(); // Different implementations depending on obj type
+}
+
+// Break into monomorphic calls:
+function processUser(user) { /* User-specific logic */ }
+function processOrder(order) { /* Order-specific logic */ }
+```
+
+7. **Use modern language features** which are designed with optimization in mind
+
+8. **Limit closure scope size**:
+```javascript
+// Bad: captures entire outer scope
+function createBigClosure() {
+  const a = 1, b = 2, c = /* large data */;
+  
+  return function() {
+    return a + b; // Only uses a and b but captures c too
+  };
+}
+
+// Better: minimize captured variables
+function createFocusedClosure() {
+  const a = 1, b = 2;
+  // c is defined but not captured
+  const c = /* large data */;
+  
+  return function() {
+    return a + b;
   };
 }
 ```
 
----
+These practices help the engine make better optimization decisions, resulting in faster code execution.
 
-### Follow-up: "Any built-in examples?"
+## Topic: Bit Operations and Typed Arrays
 
-**My Answer:**  
-Yes, `setTimeout`, `map`, `filter`—all take functions as arguments.
+**Interviewer:** When would you use bitwise operators in JavaScript, and how do typed arrays improve performance for numeric operations?
 
----
+**You:** **Bitwise operators** manipulate binary representations of numbers in JavaScript and are useful in specific scenarios:
 
-### Interviewer: "Explain Recursion."
-
-**My Answer:**  
-Recursion is a function calling itself with a base case to terminate. Like factorial:
-
+1. **Flag management**:
 ```javascript
-function factorial(n) {
-  if (n <= 1) return 1;
-  return n * factorial(n - 1);
+const READ = 1;     // 0001
+const WRITE = 2;    // 0010
+const EXECUTE = 4;  // 0100
+
+// Set permissions
+let permissions = READ | WRITE;  // 0011 (3)
+
+// Check if can read
+if (permissions & READ) {  // true
+  console.log("Can read");
+}
+
+// Add execute permission
+permissions |= EXECUTE;  // 0111 (7)
+
+// Remove write permission
+permissions &= ~WRITE;  // 0101 (5)
+```
+
+2. **Performance optimizations** for certain algorithms:
+```javascript
+// Fast integer division by 2
+const fastDivide = num => num >> 1;
+
+// Fast integer multiplication by 2
+const fastMultiply = num => num << 1;
+
+// Check if number is even
+const isEven = num => (num & 1) === 0;
+```
+
+3. **Color manipulation**:
+```javascript
+function extractRGB(color) {
+  const r = (color >> 16) & 0xFF;
+  const g = (color >> 8) & 0xFF;
+  const b = color & 0xFF;
+  return [r, g, b];
 }
 ```
 
----
-
-### Follow-up: "What’s the downside?"
-
-**My Answer:**  
-Risk of stack overflow for deep recursion without optimization.
-
----
-
-### Interviewer: "What are Collections and Generators?"
-
-**My Answer:**  
-- **Collections:** Arrays, Sets, Maps—data structures for storing values.
-- **Generators:** Functions with `function*` that `yield` values iteratively:
+As for **Typed Arrays**, they provide a way to work with raw binary data in JavaScript, offering significant performance benefits for numeric computations:
 
 ```javascript
-function* gen() {
-  yield 1;
-  yield 2;
+// Regular Array
+const regular = new Array(10000).fill(0);
+
+// Typed Array (all elements are 32-bit floats)
+const typed = new Float32Array(10000);
+```
+
+Benefits include:
+1. **Memory efficiency**: Fixed size for each element
+2. **Performance**: Optimized for numeric operations
+3. **Interoperability**: Easy to pass to APIs like WebGL, Canvas, Web Audio
+
+Common use cases:
+```javascript
+// Audio processing
+const audioBuffer = new Float32Array(1024);
+for (let i = 0; i < audioBuffer.length; i++) {
+  audioBuffer[i] = Math.sin(i * 0.01);
 }
-const iter = gen();
-console.log(iter.next().value); // 1
+
+// Image processing
+const pixels = new Uint8ClampedArray(width * height * 4); // RGBA
+// Manipulate pixels...
+const imageData = new ImageData(pixels, width, height);
+ctx.putImageData(imageData, 0, 0);
 ```
 
----
+**Interviewer:** How would you implement a Buffer class similar to Node.js Buffer using TypedArrays?
 
-### Follow-up: "Why use generators?"
-
-**My Answer:**  
-They’re great for lazy evaluation or handling streams of data efficiently.
-
----
-
-### Interviewer: "What are Promises?"
-
-**My Answer:**  
-Promises represent async operations with states: pending, fulfilled, or rejected. They chain with `.then()` and `.catch()`:
+**You:** Here's how I would implement a simplified version of a Node.js-like Buffer class using TypedArrays:
 
 ```javascript
-new Promise((resolve) => setTimeout(() => resolve("Done"), 1000))
-  .then(console.log);
-```
+class SimpleBuffer {
+  constructor(input) {
+    if (typeof input === 'number') {
+      // Allocate buffer of specified size
+      this.buffer = new ArrayBuffer(input);
+      this.data = new Uint8Array(this.buffer);
+    } else if (typeof input === 'string') {
+      // Convert string to buffer
+      const encoder = new TextEncoder();
+      this.data = encoder.encode(input);
+      this.buffer = this.data.buffer;
+    } else if (input instanceof ArrayBuffer) {
+      // Use existing ArrayBuffer
+      this.buffer = input;
+      this.data = new Uint8Array(this.buffer);
+    } else if (Array.isArray(input)) {
+      // Convert array to buffer
+      this.data = Uint8Array.from(input);
+      this.buffer = this.data.buffer;
+    } else {
+      throw new TypeError('Unsupported input type');
+    }
+  }
 
----
+  // Get byte at offset
+  readUInt8(offset = 0) {
+    return this.data[offset];
+  }
 
-### Follow-up: "How do you handle multiple promises?"
+  // Write byte at offset
+  writeUInt8(value, offset = 0) {
+    this.data[offset] = value;
+  }
 
-**My Answer:**  
-`Promise.all` for all to resolve, `Promise.race` for the first, `Promise.allSettled` for all outcomes.
+  // Convert buffer to string
+  toString(encoding = 'utf8') {
+    if (encoding !== 'utf8') {
+      throw new Error('Only UTF-8 encoding is supported');
+    }
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(this.data);
+  }
 
----
+  // Slice buffer
+  slice(start = 0, end = this.data.length) {
+    return new SimpleBuffer(this.buffer.slice(start, end));
+  }
 
-### Interviewer: "What’s `async/await`?"
+  // Get buffer length
+  get length() {
+    return this.data.length;
+  }
 
-**My Answer:**  
-Syntactic sugar over promises for cleaner async code:
+  // Static methods
+  static from(input) {
+    return new SimpleBuffer(input);
+  }
 
-```javascript
-async function fetchData() {
-  const data = await fetch("url");
-  return data;
+  static concat(buffers) {
+    const totalLength = buffers.reduce((acc, buf) => acc + buf.length, 0);
+    const result = new SimpleBuffer(totalLength);
+    
+    let offset = 0;
+    for (const buf of buffers) {
+      result.data.set(buf.data, offset);
+      offset += buf.length;
+    }
+    
+    return result;
+  }
 }
 ```
 
----
+This implementation:
+1. Uses `Uint8Array` as the underlying storage
+2. Supports various constructor inputs (number, string, array, ArrayBuffer)
+3. Provides methods to read and write data
+4. Includes utilities for string conversion, slicing, and concatenation
 
-### Follow-up: "How’s it different from promises?"
+In a real implementation, I would add more methods like:
+- Reading/writing different integer types (16-bit, 32-bit)
+- Supporting big/little endian
+- Handling different encodings
+- Adding copy methods
+- Implementing more sophisticated error handling
 
-**My Answer:**  
-It’s more readable and handles sequential async operations naturally, but it’s still promises underneath.
+TypedArrays make this implementation efficient because they directly represent binary data without the overhead of JavaScript Objects.
 
----
+## Topic: DOM and Layout Trees
 
-### Interviewer: "Tell me about Data Structures in JS."
+**Interviewer:** Explain how browsers render web pages. What's the relationship between the DOM, CSSOM, and render tree?
 
-**My Answer:**  
-JavaScript offers arrays (ordered lists), objects (key-value pairs), Sets (unique values), and Maps (key-value with any key type).
+**You:** Browsers render web pages through the following process:
 
----
+1. **Document Object Model (DOM)**:
+   - The browser parses HTML into a tree structure
+   - Each HTML element becomes a node in this tree
+   - JavaScript can modify this tree through the DOM API
 
-### Follow-up: "When’s a Set better than an array?"
+2. **CSS Object Model (CSSOM)**:
+   - The browser parses CSS (from stylesheets, style tags, inline styles)
+   - Creates a tree representing all styles that apply to each element
+   - Like the DOM, this can be manipulated by JavaScript
 
-**My Answer:**  
-For unique values or fast membership checks—`Set.has` is O(1) vs. array’s O(n).
+3. **Render Tree**:
+   - Combines DOM and CSSOM
+   - Contains only visible elements (excludes `<head>`, `display: none` elements)
+   - Includes styling information for each visible element
 
----
+4. **Layout (Reflow)**:
+   - Calculates the exact position and size of each element
+   - Determines where and how elements are placed on the page
+   - Outputs a box model with coordinates
 
-### Interviewer: "What’s Expensive Operations and Big O Notation?"
+5. **Paint**:
+   - Fills in pixels for each element
+   - Draws text, colors, images, borders, etc.
+   - Often done in multiple layers
 
-**My Answer:**  
-Expensive operations take significant time/memory. Big O describes complexity—e.g., O(n) is linear, O(n²) is quadratic.
+6. **Compositing**:
+   - Combines the painted layers in the correct order
+   - Handles overlapping elements and transparency
 
----
-
-### Follow-up: "What’s O(log n) mean?"
-
-**My Answer:**  
-Logarithmic growth—time increases slowly as input grows, like in binary search.
-
----
-
-### Interviewer: "Give me an example of an Algorithm."
-
-**My Answer:**  
-Binary search: On a sorted array, it halves the search space each step, finding a value in O(log n).
-
----
-
-### Follow-up: "How does it work?"
-
-**My Answer:**  
-Compare the middle element—if the target’s less, search left; if more, search right; repeat until found or out of range.
-
----
-
-### Interviewer: "Explain Inheritance, Polymorphism, and Code Reuse."
-
-**My Answer:**  
-- **Inheritance:** Objects inherit via prototypes.
-- **Polymorphism:** Different objects respond to the same method differently.
-- **Code Reuse:** Leveraging shared logic, like mixins or modules.
-
----
-
-### Follow-up: "How’s inheritance done in JS?"
-
-**My Answer:**  
-Through prototypes—`Child.prototype = Object.create(Parent.prototype)`.
-
----
-
-### Interviewer: "What’s a Design Pattern you use in JS?"
-
-**My Answer:**  
-The Module Pattern:
-
-```javascript
-const Module = (function() {
-  let privateVar = 1;
-  return { getVar: () => privateVar };
-})();
+The process looks something like this:
+```
+HTML → DOM
+CSS → CSSOM
+DOM + CSSOM → Render Tree → Layout → Paint → Composite
 ```
 
----
+**Interviewer:** What causes layout thrashing, and how would you optimize a JavaScript application to minimize reflows?
 
-### Follow-up: "Why use it?"
+**You:** **Layout thrashing** occurs when JavaScript repeatedly reads and writes to the DOM, causing multiple forced reflows and significantly impacting performance.
 
-**My Answer:**  
-For encapsulation and a clean public API.
+For example:
+```javascript
+// This causes layout thrashing
+for (let i = 0; i < 1000; i++) {
+  element.style.width = `${element.offsetWidth + 1}px`;
+}
+```
 
----
+Each iteration forces a style change (write), then a layout calculation (read), then another style change, etc.
 
-### Interviewer: "Explain Partial Application, Currying, Compose, and Pipe."
+To **optimize and minimize reflows**:
 
-**My Answer:**  
-- **Partial Application:** Pre-set some args, e.g., `const add5 = (x) => add(x, 5)`.
-- **Currying:** `add(a, b)` becomes `add(a)(b)`.
-- **Compose:** Right-to-left function chaining.
-- **Pipe:** Left-to-right chaining.
+1. **Batch DOM reads and writes**:
+```javascript
+// Read phase - gather all measurements
+const widths = elements.map(el => el.offsetWidth);
 
----
+// Write phase - update all at once
+elements.forEach((el, i) => {
+  el.style.width = `${widths[i] + 10}px`;
+});
+```
 
-### Follow-up: "Compose vs Pipe?"
+2. **Use `requestAnimationFrame` for visual updates**:
+```javascript
+requestAnimationFrame(() => {
+  // Visual updates here
+  element.style.transform = 'translateX(100px)';
+});
+```
 
-**My Answer:**  
-Compose: `f(g(x))`; Pipe: `g(f(x))`—just the order differs.
+3. **Modify document fragments off-screen**:
+```javascript
+const fragment = document.createDocumentFragment();
+for (let i = 0; i < 1000; i++) {
+  const el = document.createElement('div');
+  el.textContent = `Item ${i}`;
+  fragment.appendChild(el);
+}
+document.body.appendChild(fragment); // Only one reflow
+```
 
----
+4. **Use CSS classes instead of inline styles**:
+```javascript
+// Instead of
+element.style.width = '100px';
+element.style.color = 'red';
 
-### Interviewer: "What’s Clean Code?"
+// Do this
+element.classList.add('enhanced');
+```
 
-**My Answer:**  
-Code that’s readable, maintainable—small functions, clear names, single responsibility.
+5. **Avoid forced synchronous layouts**:
+```javascript
+// Bad
+const height = element.offsetHeight; // Read
+element.style.height = `${height * 2}px`; // Write
+const newHeight = element.offsetHeight; // Read - forces layout
 
----
+// Good - group reads and writes
+const height = element.offsetHeight; // Read
+const width = element.offsetWidth; // Read
+element.style.height = `${height * 2}px`; // Write
+element.style.width = `${width * 2}px`; // Write
+```
 
-### Follow-up: "One principle?"
+6. **Use `transform` and `opacity` for animations**:
+```javascript
+// Instead of
+element.style.left = '100px'; // Triggers layout
 
-**My Answer:**  
-DRY (Don’t Repeat Yourself)—avoid duplication with reusable code.
+// Use
+element.style.transform = 'translateX(100px)'; // GPU-accelerated
+```
 
----
+7. **Virtualize long lists**:
+```javascript
+// Render only visible elements instead of all 10,000
+renderVisibleItems(items.slice(startIndex, endIndex));
+```
 
-### Interviewer: "Great job! Any questions for me?"
+8. **Measure performance with `performance.now()`**:
+```javascript
+const start = performance.now();
+// Operation to measure
+const end = performance.now();
+console.log(`Operation took ${end - start}ms`);
+```
 
-**My Answer:**  
-How does your team approach performance optimization in JS projects?
+These techniques significantly reduce reflows and improve performance, especially in complex applications.
 
----
+## Topic: Factories vs Classes
 
-That wraps up the simulated interview! I’ve covered all concepts with depth, clarity, and preparedness for follow-ups, aiming for a senior-level standard.
+**Interviewer:** Compare factory functions and classes in JavaScript. When would you use one over the other?
+
+**You:** **Factory Functions** are functions that return object instances without using the `new` keyword. **Classes** are syntactical sugar over JavaScript's prototype-based inheritance.
+
+**Factory function example**:
+```javascript
+function createUser(name, age) {
+  const privateData = { modified: Date.now() };
+  
+  return {
+    name,
+    age,
+    greet() {
+      return `Hi, I'm ${name}`;
+    },
+    getLastModified() {
+      return privateData.modified;
+    }
+  };
+}
+
+const user = createUser('Alice', 30);
+```
+
+**Class example**:
+```javascript
+class User {
+  #modified; // Private field (ES2022)
+  
+  constructor(name, age) {
+    this.name = name;
+    this.age = age;
+    this.#modified = Date.now();
+  }
+  
+  greet() {
+    return `Hi, I'm ${this.name}`;
+  }
+  
+  getLastModified() {
+    return this.#modified;
+  }
+}
+
+const user = new User('Alice', 30
